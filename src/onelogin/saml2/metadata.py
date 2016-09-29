@@ -157,11 +157,13 @@ class OneLogin_Saml2_Metadata(object):
             for (ctype, info) in contacts.items():
                 contact = """    <md:ContactPerson contactType="%(type)s">
         <md:GivenName>%(name)s</md:GivenName>
+        <md:SurName>%(surName)s</md:SurName>
         <md:EmailAddress>%(email)s</md:EmailAddress>
     </md:ContactPerson>""" % \
                     {
                         'type': ctype,
                         'name': info['givenName'],
+                        'surName': info['surName'],
                         'email': info['emailAddress'],
                     }
                 contacts_info.append(contact)
