@@ -34,7 +34,7 @@ class OneLogin_Saml2_Auth(object):
     SAML Response, a Logout Request or a Logout Response).
     """
 
-    def __init__(self, request_data, old_settings=None, custom_base_path=None):
+    def __init__(self, request_data, old_settings=None, custom_base_path=None, settings=None):
         """
         Initializes the SP SAML instance.
 
@@ -48,7 +48,10 @@ class OneLogin_Saml2_Auth(object):
         :type custom_base_path: string
         """
         self.__request_data = request_data
-        self.__settings = OneLogin_Saml2_Settings(old_settings, custom_base_path)
+
+        # TS: New hotness: create OneLogin_Saml2_Settings once; add it using the settings argument -- never specify old_settings or custom_base_path.
+        self.__settings = settings if settings else OneLogin_Saml2_Settings(old_settings, custom_base_path)
+
         self.__attributes = []
         self.__nameid = None
         self.__session_index = None
@@ -59,6 +62,7 @@ class OneLogin_Saml2_Auth(object):
         self.__last_request_id = None
 
     def get_settings(self):
+        # TS: UNUSED!
         """
         Returns the settings info
         :return: Setting info

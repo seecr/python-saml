@@ -419,6 +419,8 @@ class OneLogin_Saml2_Settings_Test(unittest.TestCase):
 
         # Now try again with SP keys set directly from files that no exists:
         settings_info['custom_base_path'] = '../path/not/exists/'
+        del settings_info['sp']['privateKey']
+        del settings_info['sp']['x509cert']
         with self.assertRaises(OneLogin_Saml2_Error):
             OneLogin_Saml2_Settings(settings_info).get_sp_metadata()
 

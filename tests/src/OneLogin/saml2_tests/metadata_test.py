@@ -35,6 +35,23 @@ class OneLogin_Saml2_Metadata_Test(unittest.TestCase):
         f.close()
         return content
 
+    def testSurName(self):
+        settingsDict = self.loadSettingsJSON()
+        settingsDict['contactPerson']['technical']['surName'] = 'Surname'
+        settings = OneLogin_Saml2_Settings(settingsDict)
+        sp_data = settings.get_sp_data()
+        security = settings.get_security_data()
+        organization = settings.get_organization()
+        contacts = settings.get_contacts()
+
+        metadata = OneLogin_Saml2_Metadata.builder(
+            sp_data, security['authnRequestsSigned'],
+            security['wantAssertionsSigned'], None, None, contacts,
+            organization
+        )
+
+        self.assertIn('<md:SurName>Surname</md:SurName>', metadata)
+
     def testBuilder(self):
         """
         Tests the builder method of the OneLogin_Saml2_Metadata
