@@ -90,6 +90,7 @@ class OneLogin_Saml2_Utils(object):
 
     @staticmethod
     def validate_xml(xml, schema, debug=False):
+        # TS: added caching of schema's
         """
         Validates a xml against a schema
         :param xml: The xml that will be validated
@@ -115,11 +116,7 @@ class OneLogin_Saml2_Utils(object):
         except Exception:
             return 'unloaded_xml'
 
-        schema_file = join(dirname(__file__), 'schemas', schema)
-        f_schema = open(schema_file, 'r')
-        schema_doc = etree.parse(f_schema)
-        f_schema.close()
-        xmlschema = etree.XMLSchema(schema_doc)
+        xmlschema = loadXmlSchemaByFilename(schema)
 
         if not xmlschema.validate(dom):
             if debug:
@@ -1142,3 +1139,20 @@ class OneLogin_Saml2_Utils(object):
     def case_sensitive_urlencode(to_encode, lowercase=False):
         encoded = quote_plus(to_encode)
         return re.sub(r"%[A-F0-9]{2}", lambda m: m.group(0).lower(), encoded) if lowercase else encoded
+
+
+def loadXmlSchemaByFilename(schemaFilename):
+    schemaFilepath = join(dirname(__file__), 'schemas', schemaFilename)
+    xmlschema = XML_SCHEMA_CACHE.get(schemaFilepath)
+    if not xmlschema:
+        with open(schemaFilepath, 'r') as f:
+            schema_doc = etree.parse(f)
+
+        xmlschema = etree.XMLSchema(schema_doc)
+        XML_SCHEMA_CACHE[schemaFilepath] = xmlschema
+
+    return xmlschema
+
+
+# Caching lxml parsed xml-schema files (by filename).
+XML_SCHEMA_CACHE = {}
