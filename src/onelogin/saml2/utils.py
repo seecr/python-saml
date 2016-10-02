@@ -632,11 +632,8 @@ class OneLogin_Saml2_Utils(object):
 
             # Load the public cert
             mngr = xmlsec.KeysMngr()
-            file_cert = OneLogin_Saml2_Utils.write_temp_file(cert)
-            key_data = xmlsec.Key.load(file_cert.name, xmlsec.KeyDataFormatCertPem, None)
-            key_data.name = basename(file_cert.name)
+            key_data = xmlsec.Key.loadMemory(cert, xmlsec.KeyDataFormatCertPem, None)
             mngr.addKey(key_data)
-            file_cert.close()
 
             # Prepare for encryption
             enc_data = EncData(xmlsec.TransformAes128Cbc, type=xmlsec.TypeEncElement)
@@ -763,6 +760,9 @@ class OneLogin_Saml2_Utils(object):
 
     @staticmethod
     def add_sign(xml, key, cert, debug=False, sign_algorithm=OneLogin_Saml2_Constants.RSA_SHA1):
+        # TS: **Only** called from get_sp_metadata -to-> sign_metadata -to-> add_sign (here)
+        #     So: caching (key, cert) -> xmlsec Key abstraction is OK; because:
+        #         - There is only one (key, cert) combination per configuration.
         """
         Adds signature key and senders certificate to an element (Message or
         Assertion).
@@ -837,13 +837,8 @@ class OneLogin_Saml2_Utils(object):
         key_info.addX509Data()
 
         dsig_ctx = xmlsec.DSigCtx()
-        sign_key = xmlsec.Key.loadMemory(key, xmlsec.KeyDataFormatPem, None)
 
-        file_cert = OneLogin_Saml2_Utils.write_temp_file(cert)
-        sign_key.loadCert(file_cert.name, xmlsec.KeyDataFormatCertPem)
-        file_cert.close()
-
-        dsig_ctx.signKey = sign_key
+        dsig_ctx.signKey = add_sign_signkey(key=key, cert=cert)
         dsig_ctx.sign(signature)
 
         newdoc = parseString(etree.tostring(elem))
@@ -1048,17 +1043,13 @@ class OneLogin_Saml2_Utils(object):
             if cert is None or cert == '':
                 return False
 
-            file_cert = OneLogin_Saml2_Utils.write_temp_file(cert)
-
             if validatecert:
                 mngr = xmlsec.KeysMngr()
-                mngr.loadCert(file_cert.name, xmlsec.KeyDataFormatCertPem, xmlsec.KeyDataTypeTrusted)
+                mngr.loadCertMemory(cert, xmlsec.KeyDataFormatCertPem, xmlsec.KeyDataTypeTrusted)
                 dsig_ctx = xmlsec.DSigCtx(mngr)
             else:
                 dsig_ctx = xmlsec.DSigCtx()
-                dsig_ctx.signKey = xmlsec.Key.load(file_cert.name, xmlsec.KeyDataFormatCertPem, None)
-
-            file_cert.close()
+                dsig_ctx.signKey = xmlsec.Key.loadMemory(cert, xmlsec.KeyDataFormatCertPem, None)
 
             dsig_ctx.setEnabledKeyData([xmlsec.KeyDataX509])
             dsig_ctx.verify(signature_node)
@@ -1093,9 +1084,7 @@ class OneLogin_Saml2_Utils(object):
 
             dsig_ctx = xmlsec.DSigCtx()
 
-            file_cert = OneLogin_Saml2_Utils.write_temp_file(cert)
-            dsig_ctx.signKey = xmlsec.Key.load(file_cert.name, xmlsec.KeyDataFormatCertPem, None)
-            file_cert.close()
+            dsig_ctx.signKey = xmlsec.Key.loadMemory(cert, xmlsec.KeyDataFormatCertPem, None)
 
             # Sign the metadata with our private key.
             sign_algorithm_transform_map = {
@@ -1153,6 +1142,22 @@ def loadXmlSchemaByFilename(schemaFilename):
 
     return xmlschema
 
+def add_sign_signkey(key, cert):
+    cacheKey = (key, cert)
+    sign_key = ADD_SIGN_SIGNKEY_CACHE.get(cacheKey)
+    if not sign_key:
+        sign_key = xmlsec.Key.loadMemory(key, xmlsec.KeyDataFormatPem, None)
 
-# Caching lxml parsed xml-schema files (by filename).
-XML_SCHEMA_CACHE = {}
+        file_cert = OneLogin_Saml2_Utils.write_temp_file(cert)
+        sign_key.loadCert(file_cert.name, xmlsec.KeyDataFormatCertPem)
+        file_cert.close()
+
+        ADD_SIGN_SIGNKEY_CACHE[cacheKey] = sign_key
+
+    return sign_key
+
+
+
+
+ADD_SIGN_SIGNKEY_CACHE = {}  # sign_key (constructed from key and cert); by (key, cert) "data"
+XML_SCHEMA_CACHE = {}        # lxml parsed xml-schema files (by file(base)name).
