@@ -7,6 +7,7 @@ from base64 import b64decode
 import json
 from lxml import etree
 from os.path import dirname, join, exists
+from time import sleep
 import unittest
 from teamcity import is_running_under_teamcity
 from teamcity.unittestpy import TeamcityTestRunner
@@ -15,6 +16,8 @@ from xml.dom.minidom import Document, parseString
 from onelogin.saml2.constants import OneLogin_Saml2_Constants
 from onelogin.saml2.settings import OneLogin_Saml2_Settings
 from onelogin.saml2.utils import OneLogin_Saml2_Utils
+
+from onelogin.saml2.indirect_for_mocking import mocked_time, mocked_generate_unique_id
 
 
 class OneLogin_Saml2_Utils_Test(unittest.TestCase):
@@ -510,6 +513,48 @@ class OneLogin_Saml2_Utils_Test(unittest.TestCase):
 
         self.assertNotEqual('3311642371', OneLogin_Saml2_Utils.get_expire_time('PT360000S', '2074-12-10T04:39:31Z'))
         self.assertNotEqual('3311642371', OneLogin_Saml2_Utils.get_expire_time('PT360000S', 1418186371))
+
+    def testMocking_generate_unique_id(self):
+        _id = [0]
+        def id_fn():
+            _id[0] += 1
+            return 'MOCKID_{0}'.format(_id[0])
+
+        # Original fn
+        anId1 = OneLogin_Saml2_Utils.generate_unique_id()
+        self.assertTrue(anId1.startswith('ONELOGIN_'), anId1)
+
+        # Mocked
+        with mocked_generate_unique_id(id_fn):
+            self.assertEquals('MOCKID_1', OneLogin_Saml2_Utils.generate_unique_id())
+            self.assertEquals('MOCKID_2', OneLogin_Saml2_Utils.generate_unique_id())
+
+        # Reverted fn
+        anId2 = OneLogin_Saml2_Utils.generate_unique_id()
+        self.assertTrue(anId2.startswith('ONELOGIN_'), anId2)
+        self.assertNotEqual(anId1, anId2)
+
+    def testMocking_datetime_utcnow(self):
+        _time = [0.0]
+        def time_fn():
+            _time[0] += 1.0
+            return _time[0]
+
+        # Original fn
+        now1 = OneLogin_Saml2_Utils.now()
+        self.assertEquals(int, type(now1))
+        self.assertTrue(1400000000 < now1) # Seems OK
+
+        # Mocked
+        with mocked_time(time_fn):
+            self.assertEquals(1, OneLogin_Saml2_Utils.now())
+            self.assertEquals(2, OneLogin_Saml2_Utils.now())
+
+        # Reverted fn
+        sleep(1.01)             # Make sure at least one second has lapsed.
+        now2 = OneLogin_Saml2_Utils.now()
+        self.assertTrue(now1 < now2, repr((now1, now2)))
+        self.assertTrue(0 < (now2 - now1) < 3)
 
     def testQuery(self):
         """

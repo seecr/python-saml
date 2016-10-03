@@ -11,7 +11,7 @@ Metadata class of OneLogin's Python Toolkit.
 
 from time import gmtime, strftime
 from datetime import datetime as datetimeClass
-from .time_indirect import time
+from .indirect_for_mocking import time
 from defusedxml.minidom import parseString
 from xml.sax.saxutils import escape as escapeXml
 

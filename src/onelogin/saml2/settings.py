@@ -11,7 +11,7 @@ Setting class of OneLogin's Python Toolkit.
 
 import json
 import re
-from .time_indirect import time
+from .indirect_for_mocking import time
 from os.path import dirname, exists, join, sep, abspath
 from xml.dom.minidom import Document
 
