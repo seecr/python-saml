@@ -9,8 +9,9 @@ Metadata class of OneLogin's Python Toolkit.
 
 """
 
-from time import gmtime, strftime, time
-from datetime import datetime
+from time import gmtime, strftime
+from datetime import datetime as datetimeClass
+from .time_indirect import time
 from defusedxml.minidom import parseString
 from xml.sax.saxutils import escape as escapeXml
 
@@ -57,7 +58,7 @@ class OneLogin_Saml2_Metadata(object):
         if valid_until is None:
             valid_until = int(time()) + OneLogin_Saml2_Metadata.TIME_VALID
         if not isinstance(valid_until, basestring):
-            if isinstance(valid_until, datetime):
+            if isinstance(valid_until, datetimeClass):
                 valid_until_time = valid_until.timetuple()
             else:
                 valid_until_time = gmtime(valid_until)
