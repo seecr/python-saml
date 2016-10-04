@@ -18,7 +18,7 @@ from lxml import etree
 from defusedxml.lxml import tostring, fromstring
 from os.path import basename, dirname, join
 import re
-from sys import stderr
+import sys
 from tempfile import NamedTemporaryFile
 from textwrap import wrap
 from urllib import quote_plus
@@ -120,11 +120,12 @@ class OneLogin_Saml2_Utils(object):
 
         if not xmlschema.validate(dom):
             if debug:
-                stderr.write('Errors validating the metadata')
-                stderr.write(':\n\n')
+                sys.stderr.write('Errors validating the metadata')
+                sys.stderr.write(':\n\n')
                 for error in xmlschema.error_log:
-                    stderr.write('%s\n' % error.message)
+                    sys.stderr.write('%s\n' % error.message)
 
+                sys.stderr.flush()
             return 'invalid_xml'
 
         return parseString(etree.tostring(dom))
