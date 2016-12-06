@@ -1,0 +1,2 @@
+python-defusedxml (>= 0.4.1)
+python-defusedxml (<< 0.5)
