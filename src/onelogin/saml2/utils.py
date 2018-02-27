@@ -131,6 +131,11 @@ class OneLogin_Saml2_Utils(object):
         return parseString(etree.tostring(dom))
 
     @staticmethod
+    def element_text(node):
+        etree.strip_tags(node, etree.Comment)
+        return node.text
+
+    @staticmethod
     def format_cert(cert, heads=True):
         """
         Returns a x509 cert (adding header & footer if required).
@@ -706,7 +711,7 @@ class OneLogin_Saml2_Utils(object):
             else:
                 status['msg'] = ''
         else:
-            status['msg'] = message_entry[0].text
+            status['msg'] = OneLogin_Saml2_Utils.element_text(message_entry[0])
 
         return status
 
@@ -1030,7 +1035,7 @@ class OneLogin_Saml2_Utils(object):
                 x509_certificate_nodes = OneLogin_Saml2_Utils.query(signature_node, '//ds:Signature/ds:KeyInfo/ds:X509Data/ds:X509Certificate')
                 if len(x509_certificate_nodes) > 0:
                     x509_certificate_node = x509_certificate_nodes[0]
-                    x509_cert_value = x509_certificate_node.text
+                    x509_cert_value = OneLogin_Saml2_Utils.element_text(x509_certificate_node)
                     x509_fingerprint_value = OneLogin_Saml2_Utils.calculate_x509_fingerprint(x509_cert_value, fingerprintalg)
                     if fingerprint == x509_fingerprint_value:
                         cert = OneLogin_Saml2_Utils.format_cert(x509_cert_value)

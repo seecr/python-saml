@@ -119,7 +119,7 @@ class OneLogin_Saml2_IdPMetadataParser(object):
 
                     name_id_format_nodes = OneLogin_Saml2_Utils.query(idp_descriptor_node, './md:NameIDFormat')
                     if len(name_id_format_nodes) > 0:
-                        idp_name_id_format = name_id_format_nodes[0].text
+                        idp_name_id_format = OneLogin_Saml2_Utils.element_text(name_id_format_nodes[0])
 
                     sso_nodes = OneLogin_Saml2_Utils.query(
                         idp_descriptor_node,
@@ -138,7 +138,7 @@ class OneLogin_Saml2_IdPMetadataParser(object):
 
                     cert_nodes = OneLogin_Saml2_Utils.query(idp_descriptor_node, "./md:KeyDescriptor[@use='signing']/ds:KeyInfo/ds:X509Data/ds:X509Certificate")
                     if len(cert_nodes) > 0:
-                        idp_x509_cert = cert_nodes[0].text
+                        idp_x509_cert = OneLogin_Saml2_Utils.element_text(cert_nodes[0])
 
                     data['idp'] = {}
 

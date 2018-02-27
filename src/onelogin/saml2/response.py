@@ -250,7 +250,7 @@ class OneLogin_Saml2_Response(object):
         :rtype: list
         """
         audience_nodes = self.__query_assertion('/saml:Conditions/saml:AudienceRestriction/saml:Audience')
-        return [node.text for node in audience_nodes if node.text is not None]
+        return [OneLogin_Saml2_Utils.element_text(node) for node in audience_nodes if OneLogin_Saml2_Utils.element_text(node) is not None]
 
     def get_issuers(self):
         """
@@ -263,11 +263,11 @@ class OneLogin_Saml2_Response(object):
 
         message_issuer_nodes = self.__query('/samlp:Response/saml:Issuer')
         if message_issuer_nodes:
-            issuers.append(message_issuer_nodes[0].text)
+            issuers.append(OneLogin_Saml2_Utils.element_text(message_issuer_nodes[0]))
 
         assertion_issuer_nodes = self.__query_assertion('/saml:Issuer')
         if assertion_issuer_nodes:
-            issuers.append(assertion_issuer_nodes[0].text)
+            issuers.append(OneLogin_Saml2_Utils.element_text(assertion_issuer_nodes[0]))
 
         return list(set(issuers))
 
@@ -296,7 +296,7 @@ class OneLogin_Saml2_Response(object):
             if security.get('wantNameId', True):
                 raise Exception('Not NameID found in the assertion of the Response')
         else:
-            nameid_data = {'Value': nameid.text}
+            nameid_data = {'Value': OneLogin_Saml2_Utils.element_text(nameid)}
             for attr in ['Format', 'SPNameQualifier', 'NameQualifier']:
                 value = nameid.get(attr, None)
                 if value:
@@ -359,10 +359,11 @@ class OneLogin_Saml2_Response(object):
             for attr in attribute_node.iterchildren('{%s}AttributeValue' % OneLogin_Saml2_Constants.NSMAP['saml']):
                 # Remove any whitespace (which may be present where attributes are
                 # nested inside NameID children).
-                if attr.text:
-                    text = attr.text.strip()
-                    if text:
-                        values.append(text)
+                attr_text = OneLogin_Saml2_Utils.element_text(attr)
+                if attr_text:
+                    attr_text = attr_text.strip()
+                    if attr_text:
+                        values.append(attr_text)
 
                 # Parse any nested NameID children
                 for nameid in attr.iterchildren('{%s}NameID' % OneLogin_Saml2_Constants.NSMAP['saml']):
@@ -370,7 +371,7 @@ class OneLogin_Saml2_Response(object):
                         'NameID': {
                             'Format': nameid.get('Format'),
                             'NameQualifier': nameid.get('NameQualifier'),
-                            'value': nameid.text
+                            'value': OneLogin_Saml2_Utils.element_text(nameid)
                         }
                     })
 
