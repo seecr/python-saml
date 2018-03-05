@@ -12,7 +12,6 @@ Auxiliary class of OneLogin's Python Toolkit.
 import base64
 from copy import deepcopy
 from datetime import datetime
-from .time_indirect import datetime
 from .indirect_for_mocking import datetime, generate_unique_id
 from calendar import timegm
 from hashlib import sha1, sha256, sha384, sha512
