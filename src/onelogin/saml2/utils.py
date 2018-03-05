@@ -12,7 +12,8 @@ Auxiliary class of OneLogin's Python Toolkit.
 import base64
 from copy import deepcopy
 from datetime import datetime
-import calendar
+from .time_indirect import datetime
+from calendar import timegm
 from hashlib import sha1, sha256, sha384, sha512
 from isodate import parse_duration as duration_parser
 from lxml import etree
@@ -454,7 +455,7 @@ class OneLogin_Saml2_Utils(object):
             data = datetime.strptime(timestr, '%Y-%m-%dT%H:%M:%SZ')
         except ValueError:
             data = datetime.strptime(timestr, '%Y-%m-%dT%H:%M:%S.%fZ')
-        return calendar.timegm(data.utctimetuple())
+        return timegm(data.utctimetuple())
 
     @staticmethod
     def now():
@@ -462,7 +463,7 @@ class OneLogin_Saml2_Utils(object):
         :return: unix timestamp of actual time.
         :rtype: int
         """
-        return calendar.timegm(datetime.utcnow().utctimetuple())
+        return timegm(datetime.utcnow().utctimetuple())
 
     @staticmethod
     def parse_duration(duration, timestamp=None):
@@ -487,7 +488,7 @@ class OneLogin_Saml2_Utils(object):
             data = datetime.utcnow() + timedelta
         else:
             data = datetime.utcfromtimestamp(timestamp) + timedelta
-        return calendar.timegm(data.utctimetuple())
+        return timegm(data.utctimetuple())
 
     @staticmethod
     def get_expire_time(cache_duration=None, valid_until=None):
