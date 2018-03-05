@@ -70,6 +70,21 @@ class OneLogin_Saml2_Auth_Test(unittest.TestCase):
         sso_url = settings_info['idp']['singleSignOnService']['url']
         self.assertEqual(auth.get_sso_url(), sso_url)
 
+    def testLoginHasMockedId(self):
+        settings_info = self.loadSettingsJSON()
+        auth = OneLogin_Saml2_Auth(self.get_request(), old_settings=settings_info)
+
+        redirectStr = auth.login()
+
+        # TODO: Continue Here!!  (imports, constants, with <mock_id...>:, in/xpath-test for ID).
+        self.fail('TODO')
+
+        _scheme, _netloc, _path, query, _fragment = urlsplit(redirectStr)
+        q = parse_qs(query)
+        self.assertEquals({'SigAlg', 'Signature', 'RelayState', 'SAMLRequest'}, set(q.keys()))
+        samlRequest = q['SAMLRequest']
+        samlRequestXmlStr = decompress(b64decode(samlRequest[0]), -MAX_WBITS)
+
     def testAuthInitiatedWithSettings(self):
         # TS: a.k.a. does-not-crash-so-must-be-working.
         settings = OneLogin_Saml2_Settings(custom_base_path=self.settings_path)

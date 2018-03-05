@@ -17,6 +17,8 @@ from onelogin.saml2.constants import OneLogin_Saml2_Constants
 from onelogin.saml2.settings import OneLogin_Saml2_Settings
 from onelogin.saml2.utils import OneLogin_Saml2_Utils
 
+from onelogin.saml2.indirect_for_mocking import mocked_generate_unique_id
+
 
 class OneLogin_Saml2_Authn_Request_Test(unittest.TestCase):
     def loadSettingsJSON(self, filename='settings1.json'):
@@ -64,6 +66,7 @@ class OneLogin_Saml2_Authn_Request_Test(unittest.TestCase):
         self.assertRegexpMatches(inflated, '^<samlp:AuthnRequest')
         self.assertNotIn('ProviderName="SP test"', inflated)
 
+<<<<<<< HEAD
     def testGetXML(self):
         """
         Tests that we can get the request XML directly without
@@ -91,6 +94,17 @@ class OneLogin_Saml2_Authn_Request_Test(unittest.TestCase):
         inflated = authn_request.get_xml()
         self.assertRegexpMatches(inflated, '^<samlp:AuthnRequest')
         self.assertNotIn('ProviderName="SP test"', inflated)
+    
+    def testIdGeneration(self):
+        saml_settings = self.loadSettingsJSON()
+        settings = OneLogin_Saml2_Settings(saml_settings)
+        authn_request = OneLogin_Saml2_Authn_Request(settings)
+        anId = authn_request.get_id()
+        self.assertTrue(anId.startswith('ONELOGIN_'), anId)
+        with mocked_generate_unique_id(lambda: 'Yes'):
+            authn_request = OneLogin_Saml2_Authn_Request(settings)
+            anId = authn_request.get_id()
+            self.assertEquals('Yes', anId)
 
     def testCreateRequestAuthContext(self):
         """

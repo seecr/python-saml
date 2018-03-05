@@ -13,6 +13,7 @@ import base64
 from copy import deepcopy
 from datetime import datetime
 from .time_indirect import datetime
+from .indirect_for_mocking import datetime, generate_unique_id
 from calendar import timegm
 from hashlib import sha1, sha256, sha384, sha512
 from isodate import parse_duration as duration_parser
@@ -422,7 +423,7 @@ class OneLogin_Saml2_Utils(object):
         :return: A unique string
         :rtype: string
         """
-        return 'ONELOGIN_%s' % sha1(uuid4().hex).hexdigest()
+        return generate_unique_id()
 
     @staticmethod
     def parse_time_to_SAML(time):

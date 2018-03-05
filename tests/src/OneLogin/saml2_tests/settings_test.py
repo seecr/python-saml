@@ -5,6 +5,7 @@
 
 import json
 from os.path import dirname, join, exists, sep
+from time import time
 import unittest
 from teamcity import is_running_under_teamcity
 from teamcity.unittestpy import TeamcityTestRunner
@@ -12,6 +13,8 @@ from teamcity.unittestpy import TeamcityTestRunner
 from onelogin.saml2.errors import OneLogin_Saml2_Error
 from onelogin.saml2.settings import OneLogin_Saml2_Settings
 from onelogin.saml2.utils import OneLogin_Saml2_Utils
+
+from onelogin.saml2.indirect_for_mocking import mocked_time
 
 
 class OneLogin_Saml2_Settings_Test(unittest.TestCase):
@@ -112,6 +115,57 @@ class OneLogin_Saml2_Settings_Test(unittest.TestCase):
         custom_base_path = join(dirname(dirname(dirname(dirname(__file__)))), 'data', 'customPath')
         settings_3 = OneLogin_Saml2_Settings(custom_base_path=custom_base_path)
         self.assertEqual(len(settings_3.get_errors()), 0)
+
+    def testMocked_time_call_in_validate_xml(self):
+        custom_base_path = join(dirname(dirname(dirname(dirname(__file__)))), 'settings')
+        settings = OneLogin_Saml2_Settings(custom_base_path=custom_base_path)
+        self.assertEqual(len(settings.get_errors()), 0)
+
+        metadata = settings.get_sp_metadata()
+
+        # Original fn
+        errors = settings.validate_metadata(metadata)
+        self.assertFalse(errors, errors)
+
+        delta = 3600 * 24 * 10**6
+        _time = [float(time() + delta)]
+        _log = []
+        def time_fn():
+            _time[0] += 1.0
+            _log.append(True)
+            return _time[0]
+
+        # Mocked
+        with mocked_time(time_fn):
+            errors = settings.validate_metadata(metadata)
+            self.assertEquals(['expired_xml'], errors)
+            self.assertEquals(2, len(_log))
+
+        # Reverted fn
+        errors = settings.validate_metadata(metadata)
+        self.assertFalse(errors, errors)
+
+    def testMocked_time_call_in_metadata_builder(self):
+        # called via get_sp_metadata()
+        custom_base_path = join(dirname(dirname(dirname(dirname(__file__)))), 'settings')
+        settings = OneLogin_Saml2_Settings(custom_base_path=custom_base_path)
+        self.assertEqual(len(settings.get_errors()), 0)
+
+        delta = 3600 * 24 * 10**6
+        _time = [float(time() + delta)]
+        _log = []
+        def time_fn():
+            _time[0] += 1.0
+            _log.append(True)
+            return _time[0]
+
+        # Mocked
+        with mocked_time(time_fn):
+            metadata = settings.get_sp_metadata()
+            self.assertEquals(1, len(_log))
+            errors = settings.validate_metadata(metadata)
+            self.assertFalse(errors)
+            self.assertEquals(3, len(_log))
 
     def testGetCertPath(self):
         """
