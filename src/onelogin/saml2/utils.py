@@ -114,6 +114,7 @@ class OneLogin_Saml2_Utils(object):
 
     @staticmethod
     def validate_xml(xml, schema, debug=False):
+        # TS: added caching of schema's
         """
         Validates a xml against a schema
         :param xml: The xml that will be validated
@@ -139,11 +140,7 @@ class OneLogin_Saml2_Utils(object):
         except Exception:
             return 'unloaded_xml'
 
-        schema_file = join(dirname(__file__), 'schemas', schema)
-        f_schema = open(schema_file, 'r')
-        schema_doc = etree.parse(f_schema)
-        f_schema.close()
-        xmlschema = etree.XMLSchema(schema_doc)
+        xmlschema = loadXmlSchemaByFilename(schema)
 
         if not xmlschema.validate(dom):
             if debug:
@@ -671,11 +668,8 @@ class OneLogin_Saml2_Utils(object):
 
             # Load the public cert
             mngr = xmlsec.KeysMngr()
-            file_cert = OneLogin_Saml2_Utils.write_temp_file(cert)
-            key_data = xmlsec.Key.load(file_cert.name, xmlsec.KeyDataFormatCertPem, None)
-            key_data.name = basename(file_cert.name)
+            key_data = xmlsec.Key.loadMemory(cert, xmlsec.KeyDataFormatCertPem, None)
             mngr.addKey(key_data)
-            file_cert.close()
 
             # Prepare for encryption
             enc_data = EncData(xmlsec.TransformAes128Cbc, type=xmlsec.TypeEncElement)
@@ -814,6 +808,9 @@ class OneLogin_Saml2_Utils(object):
 
     @staticmethod
     def add_sign(xml, key, cert, debug=False, sign_algorithm=OneLogin_Saml2_Constants.RSA_SHA1, digest_algorithm=OneLogin_Saml2_Constants.SHA1):
+        # TS: **Only** called from get_sp_metadata -to-> sign_metadata -to-> add_sign (here)
+        #     So: caching (key, cert) -> xmlsec Key abstraction is OK; because:
+        #         - There is only one (key, cert) combination per configuration.
         """
         Adds signature key and senders certificate to an element (Message or
         Assertion).
@@ -908,13 +905,8 @@ class OneLogin_Saml2_Utils(object):
         key_info.addX509Data()
 
         dsig_ctx = xmlsec.DSigCtx()
-        sign_key = xmlsec.Key.loadMemory(key, xmlsec.KeyDataFormatPem, None)
 
-        file_cert = OneLogin_Saml2_Utils.write_temp_file(cert)
-        sign_key.loadCert(file_cert.name, xmlsec.KeyDataFormatCertPem)
-        file_cert.close()
-
-        dsig_ctx.signKey = sign_key
+        dsig_ctx.signKey = add_sign_signkey(key=key, cert=cert)
         dsig_ctx.sign(signature)
 
         newdoc = parseString(tostring(elem, encoding='unicode').encode('utf-8'))
@@ -1153,17 +1145,13 @@ class OneLogin_Saml2_Utils(object):
                 OneLogin_Saml2_Error.CERT_NOT_FOUND
             )
 
-        file_cert = OneLogin_Saml2_Utils.write_temp_file(cert)
-
         if validatecert:
             mngr = xmlsec.KeysMngr()
-            mngr.loadCert(file_cert.name, xmlsec.KeyDataFormatCertPem, xmlsec.KeyDataTypeTrusted)
+            mngr.loadCertMemory(cert, xmlsec.KeyDataFormatCertPem, xmlsec.KeyDataTypeTrusted)
             dsig_ctx = xmlsec.DSigCtx(mngr)
         else:
             dsig_ctx = xmlsec.DSigCtx()
-            dsig_ctx.signKey = xmlsec.Key.load(file_cert.name, xmlsec.KeyDataFormatCertPem, None)
-
-        file_cert.close()
+            dsig_ctx.signKey = xmlsec.Key.loadMemory(cert, xmlsec.KeyDataFormatCertPem, None)
 
         dsig_ctx.setEnabledKeyData([xmlsec.KeyDataX509])
 
@@ -1209,10 +1197,7 @@ class OneLogin_Saml2_Utils(object):
         xmlsec.set_error_callback(error_callback_method)
 
         dsig_ctx = xmlsec.DSigCtx()
-
-        file_cert = OneLogin_Saml2_Utils.write_temp_file(cert)
-        dsig_ctx.signKey = xmlsec.Key.load(file_cert.name, xmlsec.KeyDataFormatCertPem, None)
-        file_cert.close()
+        dsig_ctx.signKey = xmlsec.Key.loadMemory(cert, xmlsec.KeyDataFormatCertPem, None)
 
         # Sign the metadata with our private key.
         sign_algorithm_transform_map = {
@@ -1254,3 +1239,36 @@ class OneLogin_Saml2_Utils(object):
     def case_sensitive_urlencode(to_encode, lowercase=False):
         encoded = quote_plus(to_encode)
         return re.sub(r"%[A-F0-9]{2}", lambda m: m.group(0).lower(), encoded) if lowercase else encoded
+
+
+def loadXmlSchemaByFilename(schemaFilename):
+    schemaFilepath = join(dirname(__file__), 'schemas', schemaFilename)
+    xmlschema = XML_SCHEMA_CACHE.get(schemaFilepath)
+    if not xmlschema:
+        with open(schemaFilepath, 'r') as f:
+            schema_doc = etree.parse(f)
+
+        xmlschema = etree.XMLSchema(schema_doc)
+        XML_SCHEMA_CACHE[schemaFilepath] = xmlschema
+
+    return xmlschema
+
+def add_sign_signkey(key, cert):
+    cacheKey = (key, cert)
+    sign_key = ADD_SIGN_SIGNKEY_CACHE.get(cacheKey)
+    if not sign_key:
+        sign_key = xmlsec.Key.loadMemory(key, xmlsec.KeyDataFormatPem, None)
+
+        file_cert = OneLogin_Saml2_Utils.write_temp_file(cert)
+        sign_key.loadCert(file_cert.name, xmlsec.KeyDataFormatCertPem)
+        file_cert.close()
+
+        ADD_SIGN_SIGNKEY_CACHE[cacheKey] = sign_key
+
+    return sign_key
+
+
+
+
+ADD_SIGN_SIGNKEY_CACHE = {}  # sign_key (constructed from key and cert); by (key, cert) "data"
+XML_SCHEMA_CACHE = {}        # lxml parsed xml-schema files (by file(base)name).

@@ -70,6 +70,13 @@ class OneLogin_Saml2_Auth_Test(unittest.TestCase):
         sso_url = settings_info['idp']['singleSignOnService']['url']
         self.assertEqual(auth.get_sso_url(), sso_url)
 
+    def testAuthInitiatedWithSettings(self):
+        # TS: a.k.a. does-not-crash-so-must-be-working.
+        settings = OneLogin_Saml2_Settings(custom_base_path=self.settings_path)
+        auth = OneLogin_Saml2_Auth(self.get_request(), settings=settings)
+        sso_url = settings.get_idp_data()['singleSignOnService']['url']
+        self.assertEqual(auth.get_sso_url(), sso_url)
+
     def testGetSLOurl(self):
         """
         Tests the get_slo_url method of the OneLogin_Saml2_Auth class
