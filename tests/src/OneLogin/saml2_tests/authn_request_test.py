@@ -66,7 +66,6 @@ class OneLogin_Saml2_Authn_Request_Test(unittest.TestCase):
         self.assertRegexpMatches(inflated, '^<samlp:AuthnRequest')
         self.assertNotIn('ProviderName="SP test"', inflated)
 
-<<<<<<< HEAD
     def testGetXML(self):
         """
         Tests that we can get the request XML directly without
