@@ -3,13 +3,16 @@
 # Copyright (c) 2014, OneLogin, Inc.
 # All rights reserved.
 
+from StringIO import StringIO
 from base64 import b64decode, b64encode
-import json
+from lxml.etree import parse
 from os.path import dirname, join, exists
-import unittest
 from teamcity import is_running_under_teamcity
 from teamcity.unittestpy import TeamcityTestRunner
-from urlparse import urlparse, parse_qs
+from urlparse import urlparse, urlsplit, parse_qs
+from zlib import decompress, MAX_WBITS
+import json
+import unittest
 
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
 from onelogin.saml2.constants import OneLogin_Saml2_Constants
@@ -17,6 +20,8 @@ from onelogin.saml2.settings import OneLogin_Saml2_Settings
 from onelogin.saml2.utils import OneLogin_Saml2_Utils
 from onelogin.saml2.logout_request import OneLogin_Saml2_Logout_Request
 from onelogin.saml2.errors import OneLogin_Saml2_Error
+
+from onelogin.saml2.indirect_for_mocking import mocked_generate_unique_id, mocked_time
 
 
 class OneLogin_Saml2_Auth_Test(unittest.TestCase):
@@ -74,16 +79,45 @@ class OneLogin_Saml2_Auth_Test(unittest.TestCase):
         settings_info = self.loadSettingsJSON()
         auth = OneLogin_Saml2_Auth(self.get_request(), old_settings=settings_info)
 
-        redirectStr = auth.login()
+        def reqIdFromSSOLoginRedirectUrl(url):
+            _, _, _, query, _ = urlsplit(url)
+            samlRequestXmlStr = decompress(b64decode(parse_qs(query)['SAMLRequest'][0]), -MAX_WBITS)
+            lxmlNode = parse(StringIO(samlRequestXmlStr))
+            reqId = lxmlNode.xpath('/samlp:AuthnRequest/@ID', namespaces=SAML_NAMESPACES)[0]
+            return reqId
 
-        # TODO: Continue Here!!  (imports, constants, with <mock_id...>:, in/xpath-test for ID).
-        self.fail('TODO')
+        _id = [0]
+        def id_fn():
+            _id[0] += 1
+            return 'MOCK_ID_{0}'.format(_id[0])
 
-        _scheme, _netloc, _path, query, _fragment = urlsplit(redirectStr)
-        q = parse_qs(query)
-        self.assertEquals({'SigAlg', 'Signature', 'RelayState', 'SAMLRequest'}, set(q.keys()))
-        samlRequest = q['SAMLRequest']
-        samlRequestXmlStr = decompress(b64decode(samlRequest[0]), -MAX_WBITS)
+        self.assertTrue(reqIdFromSSOLoginRedirectUrl(auth.login()).startswith('ONELOGIN_'))
+
+        with mocked_generate_unique_id(id_fn):
+            self.assertEquals('MOCK_ID_1', reqIdFromSSOLoginRedirectUrl(auth.login()))
+            self.assertEquals('MOCK_ID_2', reqIdFromSSOLoginRedirectUrl(auth.login()))
+
+    def testLoginHasMockedTime(self):
+        settings_info = self.loadSettingsJSON()
+        auth = OneLogin_Saml2_Auth(self.get_request(), old_settings=settings_info)
+
+        def instantFromSSOLoginRedirectUrl(url):
+            _, _, _, query, _ = urlsplit(url)
+            samlRequestXmlStr = decompress(b64decode(parse_qs(query)['SAMLRequest'][0]), -MAX_WBITS)
+            lxmlNode = parse(StringIO(samlRequestXmlStr))
+            issueInstant = lxmlNode.xpath('/samlp:AuthnRequest/@IssueInstant', namespaces=SAML_NAMESPACES)[0]
+            return issueInstant
+
+        _time = [0.0]
+        def time_fn():
+            _time[0] += 1.0
+            return _time[0]
+
+        self.assertTrue(instantFromSSOLoginRedirectUrl(auth.login()).startswith('20'))
+
+        with mocked_time(time_fn):
+            self.assertEquals('1970-01-01T00:00:01Z', instantFromSSOLoginRedirectUrl(auth.login()))
+            self.assertEquals('1970-01-01T00:00:02Z', instantFromSSOLoginRedirectUrl(auth.login()))
 
     def testAuthInitiatedWithSettings(self):
         # TS: a.k.a. does-not-crash-so-must-be-working.
@@ -1186,6 +1220,11 @@ class OneLogin_Saml2_Auth_Test(unittest.TestCase):
         auth = OneLogin_Saml2_Auth(message_wrapper, old_settings=settings)
         auth.process_slo()
         self.assertIn(auth.get_last_message_id(), '_f9ee61bd9dbf63606faa9ae3b10548d5b3656fb859')
+
+SAML_NAMESPACES = {
+    'samlp': 'urn:oasis:names:tc:SAML:2.0:protocol',
+    'saml':  'urn:oasis:names:tc:SAML:2.0:assertion',
+}
 
 if __name__ == '__main__':
     if is_running_under_teamcity():
