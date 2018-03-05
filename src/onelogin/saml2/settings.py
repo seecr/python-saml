@@ -128,11 +128,12 @@ class OneLogin_Saml2_Settings(object):
         self.__paths = {
             'base': base_path,
             'cert': base_path + 'certs' + sep,
-            'lib': base_path + 'lib' + sep,
-            'extlib': base_path + 'extlib' + sep,
+            'lib': base_path + 'lib' + sep,        # TS: Not used (ever)!
+            'extlib': base_path + 'extlib' + sep,  # TS: Not used (ever)!
         }
 
     def __update_paths(self, settings):
+        # TS: Broken for a "custom_base_path"; use __init__'s custom_base_path argument instead!
         """
         Set custom paths if necessary
         """
@@ -154,6 +155,7 @@ class OneLogin_Saml2_Settings(object):
         return self.__paths['base']
 
     def get_cert_path(self):
+        # TS: accessor NOT USED!  (--> self.__paths['cert'] is :-s)
         """
         Returns cert path
 
@@ -163,6 +165,7 @@ class OneLogin_Saml2_Settings(object):
         return self.__paths['cert']
 
     def get_lib_path(self):
+        # TS: NOT USED!
         """
         Returns lib path
 
@@ -172,6 +175,7 @@ class OneLogin_Saml2_Settings(object):
         return self.__paths['lib']
 
     def get_ext_lib_path(self):
+        # TS: NOT USED!
         """
         Returns external lib path
 
@@ -181,6 +185,7 @@ class OneLogin_Saml2_Settings(object):
         return self.__paths['extlib']
 
     def get_schemas_path(self):
+        # TS: accessor NOT USED!  (--> is manually re-computed in OneLogin_Saml2_Utils.validate_xml :-s)
         """
         Returns schema path
 
@@ -517,6 +522,7 @@ class OneLogin_Saml2_Settings(object):
         if not key and exists(key_file_name):
             with open(key_file_name) as f:
                 key = f.read()
+                self.__sp['privateKey'] = key # TS: use self.__sp settings as a cache.
 
         return key or None
 
@@ -533,6 +539,7 @@ class OneLogin_Saml2_Settings(object):
         if not cert and exists(cert_file_name):
             with open(cert_file_name) as f:
                 cert = f.read()
+                self.__sp['x509cert'] = cert # TS: use self.__sp settings as a cache.
 
         return cert or None
 

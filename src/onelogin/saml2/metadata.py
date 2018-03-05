@@ -12,6 +12,7 @@ Metadata class of OneLogin's Python Toolkit.
 from time import gmtime, strftime, time
 from datetime import datetime
 from defusedxml.minidom import parseString
+from xml.sax.saxutils import escape as escapeXml
 
 from onelogin.saml2.constants import OneLogin_Saml2_Constants
 from onelogin.saml2.utils import OneLogin_Saml2_Utils
@@ -161,13 +162,19 @@ class OneLogin_Saml2_Metadata(object):
         if len(contacts) > 0:
             contacts_info = []
             for (ctype, info) in contacts.items():
+                surName = info.get('surName')
+                surNameXml = ''
+                if surName:
+                    surNameXml = '\n        <md:SurName>%s</md:SurName>' % escapeXml(surName)
+
                 contact = """    <md:ContactPerson contactType="%(type)s">
-        <md:GivenName>%(name)s</md:GivenName>
+        <md:GivenName>%(name)s</md:GivenName>%(surNameXml)s
         <md:EmailAddress>%(email)s</md:EmailAddress>
     </md:ContactPerson>""" % \
                     {
                         'type': ctype,
                         'name': info['givenName'],
+                        'surNameXml': surNameXml,
                         'email': info['emailAddress'],
                     }
                 contacts_info.append(contact)
